@@ -1,8 +1,10 @@
 package extractor
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -15,7 +17,6 @@ var founds []string
 const regexUrlsString = `(?:"|')(((?:[a-zA-Z]{1,10}://|//)[^"'/]{1,}\.[a-zA-Z]{2,}[^"']{0,})|((?:/|\.\./|\./)[^"'><,;| *()(%%$^/\\\[\]][^"'><,;|()]{1,})|([a-zA-Z0-9_\-/]{1,}/[a-zA-Z0-9_\-/]{1,}\.(?:[a-zA-Z]{1,4}|action)(?:[\?|#][^"|']{0,}|))|([a-zA-Z0-9_\-/]{1,}/[a-zA-Z0-9_\-/]{3,}(?:[\?|#][^"|']{0,}|))|([a-zA-Z0-9_\-]{1,}\.(?:php|asp|aspx|jsp|json|action|html|js|txt|xml)(?:[\?|#][^"|']{0,}|)))(?:"|')`
 
 var regexpUrls = regexp.MustCompile(regexUrlsString)
-
 
 func unique(strSlice []string) []string {
 	keys := make(map[string]bool)
@@ -109,22 +110,50 @@ func sortUrls(urls []string) ([]string, []string) {
 	return sortedUrls, sortedPaths
 }
 
-func Extract(tempDir string) {
+func Extract(tempDir string, path string) {
+
 	doHashWalk(tempDir)
 
 	sortedUrls, sortedPaths := sortUrls(founds)
 
 	if len(sortedUrls) > 0 {
-		fmt.Println( "Result of URLs:")
-		fmt.Printf("\n \n")
-		fmt.Printf(	strings.Join(sortedUrls, "\n"))
+		fmt.Printf("\n \n \n")
+
+		if err := writeLines(sortedUrls, path); err != nil {
+			log.Fatalf("writeLines: %s", err)
+		}
+
+		// fmt.Println("Result of URLs:")
+		// fmt.Printf("\n \n")
+		// fmt.Printf(strings.Join(sortedUrls, "\n"))
+
 	}
 
 	fmt.Printf("\n \n \n")
 
 	if len(sortedPaths) > 0 {
-		fmt.Println( "Result of URLs Paths:")
-		fmt.Printf("\n \n")
-		fmt.Printf(	strings.Join(sortedPaths, "\n"))
+
+		if err := writeLines(sortedPaths, path); err != nil {
+			log.Fatalf("writeLines: %s", err)
+		}
+
+		// fmt.Println("Result of URLs Paths:")
+		// fmt.Printf("\n \n")
+		// fmt.Printf(strings.Join(sortedPaths, "\n"))
 	}
+}
+
+// writeLines writes the lines to the given file.
+func writeLines(lines []string, path string) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	w := bufio.NewWriter(file)
+	for _, line := range lines {
+		fmt.Fprintln(w, line)
+	}
+	return w.Flush()
 }
